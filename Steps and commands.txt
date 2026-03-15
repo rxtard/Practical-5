@@ -5,64 +5,67 @@ GPS Module		GPIO pin
 VCC				Pin 2
 GND				Pin 6
 Tx				Pin 10
+
 Jumper cable type: Female to Female
-Setup:
 
-STEP 1 :- (Create a virtual environment)	
-1) Installing the venv module:-
-	sudo apt install python3-venv     
-
-2) Creating a new virtual environment. myenv is user-defined name
-	python3 -m venv myenv 
-
-3) Activate the Virtual Environment
+Step1 Create Venv
+sudo apt update
+sudo apt install python3-venv -y
+python3 -m venv myenv
 source myenv/bin/activate
 
-4) It should look like :-  (myenv) pi@raspberrypi:- $
-(If virtual environment is already created just activate the environment)
+---
 
-STEP 2 :- Enter the following commands one by one, pressing Enter after each.
+Step2 Enable UART
+sudo nano /boot/config.txt
+
+Add lines:
 dtparam=spi=on
 dtoverlay=pi3-disable-bt
 core_freq=250
 enable_uart=1
 force_turbo=1
+
+Save:
+CTRL+X
+Y
+ENTER
+
+---
+
+Step3 Disable Serial Console
 sudo systemctl stop serial-getty@ttyS0.service
 sudo systemctl disable serial-getty@ttyS0.service
 sudo systemctl enable serial-getty@ttyAMA0.service
- 
-STEP 3:- Installing minicom
-	sudo apt-get install minicom
- 
-STEP 4:- Installing pynmea2
-	pip install pynmea2 --break-system-packages
-STEP 5 :-
-	sudo cat /dev/ttyS0
-(This will run in the background. To stop this press ctrl + C). You will get the output.
-The following steps are optional.
- 
-STEP 6 :- code
-import time
-import serial
-import string
-import pynmea2
-import RPi.GPIO as gpio  #if error here use command:-  pip install Rpi.GPIO
-gpio.setmode(gpio.BCM)
-port = "/dev/ttyS0" # the serial port to which the pi is connected.
-#create a serial object
-ser = serial.Serial(port, baudrate = 9600, timeout = 0.5)
-while 1:
-    try:
-        data = ser.readline()
-        print(data)
-    except:
-	print("loading") 
-#wait for the serial port to churn out data
- 
-    if data[0:6] == '$GPRMC':  
-     	msg = pynmea2.parse(data)
- 	print msg
-	time.sleep(2)
 
-STEP 7:-  To deactivate virtual environment
- 	deactivate 
+sudo reboot
+
+---
+
+Step4 Install packages
+sudo apt install minicom -y
+pip install pynmea2 --break-system-packages
+pip install pyserial --break-system-packages
+---
+
+Step5 Test GPS
+sudo cat /dev/ttyS0
+or
+sudo cat /dev/serial0
+---
+Step6 Python Code (gps.py)
+import serial
+import time
+import pynmea2
+port = "/dev/serial0"
+ser = serial.Serial(port, baudrate=9600, timeout=0.5)
+while True:
+    newdata = ser.readline().decode("utf-8", errors="ignore")
+    if newdata.startswith("$GPRMC"):
+        try:
+            newmsg = pynmea2.parse(newdata)
+            lat = newmsg.latitude
+            lng = newmsg.longitude
+            print("Latitude =", lat, "Longitude =", lng)
+        except pynmea2.ParseError:
+            continue
