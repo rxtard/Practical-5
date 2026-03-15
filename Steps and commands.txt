@@ -69,3 +69,6 @@ while True:
             print("Latitude =", lat, "Longitude =", lng)
         except pynmea2.ParseError:
             continue
+
+STEP 7:-  To deactivate virtual environment
+ 	deactivate 
